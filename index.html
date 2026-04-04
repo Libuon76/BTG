@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>KINETIC ROULETTE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,900&family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #FFD217; --bg: #FFF9E5; --olive: #5E5400; --red: #B2002D; --cream: #FDEFC7;
+            --purple: #7000FF;
+        }
+
+        body { 
+            font-family: 'M PLUS Rounded 1c', sans-serif; 
+            background: var(--primary); 
+            height: 100dvh; margin: 0; overflow: hidden; 
+            display: flex; flex-direction: column;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); color: #000000; 
+        }
+        
+        .brand-title { font-family: 'Kanit', sans-serif; font-weight: 900; font-style: italic; letter-spacing: -1px; line-height: 1; }
+        .nav-text, .spin-btn-text, .side-title { font-family: 'Kanit', sans-serif; font-style: italic; font-weight: 900; }
+
+        header { flex-shrink: 0; background-color: var(--primary); position: relative; z-index: 100; transition: background-color 0.6s; }
+        header::after { content: ""; position: absolute; top: 100%; left: 0; width: 100%; height: 30px; background: linear-gradient(to bottom, var(--primary), transparent); pointer-events: none; transition: background-color 0.6s; }
+
+        .app-view { 
+            flex: 1; overflow-y: auto; 
+            background: linear-gradient(to bottom, var(--primary) 0%, var(--bg) 40%, var(--bg) 100%); 
+            position: relative; -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+        
+        .page { display: none; padding: 10px 24px 180px; animation: pageIn 0.4s ease-out; min-height: 100%; }
+        .page.active { display: block; }
+        @keyframes pageIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* リキッド・グラス・ナビゲーション */
+        .nav-container { position: fixed; bottom: 25px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); pointer-events: none; }
+        nav { pointer-events: auto; background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(25px) saturate(180%); padding: 12px 25px; border-radius: 60px; display: flex; align-items: center; gap: 18px; border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 15px 35px rgba(0,0,0,0.08); transition: all 0.6s; }
+        .nav-item { width: 68px; height: 68px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.4); transition: 0.3s; border: none; outline: none; -webkit-tap-highlight-color: transparent; }
+        #n-play.active { background: var(--primary); transform: translateY(-8px) scale(1.1); box-shadow: 0 5px 20px rgba(255, 210, 23, 0.6); }
+        #n-games.active { background: rgba(255, 255, 255, 0.9); transform: translateY(-8px) scale(1.1); }
+        #n-secret { display: none; background: var(--purple); box-shadow: 0 8px 25px rgba(112, 0, 255, 0.5); transform: translateY(-8px) scale(1.15); border: 2px solid rgba(255,255,255,0.3); }
+        #n-secret i, #n-secret span { color: white !important; }
+        .nav-item i { font-size: 18px; color: #5E5400; }
+        .nav-item span { font-size: 8px; font-weight: 900; color: #5E5400; letter-spacing: 0.5px; }
+
+        body.secret-active { --primary: #1a0033; --bg: #05000a; color: white; }
+        body.secret-active .app-view { background: linear-gradient(to bottom, #1a0033 0%, #0d001a 50%, #000 100%); }
+        body.secret-active nav { background: rgba(34, 0, 56, 0.4); border: 1px solid rgba(112, 0, 255, 0.3); box-shadow: 0 15px 40px rgba(0,0,0,0.5); }
+        body.secret-active .nav-item:not(#n-secret) { background: rgba(0,0,0,0.3); }
+        body.secret-active .nav-item:not(#n-secret) i, body.secret-active .nav-item:not(#n-secret) span { color: #7000FF; }
+        
+        /* シークレット中に対象とジャンルを消す設定 */
+        body.secret-active .normal-only { display: none !important; }
+
+        /* ルーレット & ボタン */
+        .wheel-box { position: relative; width: 280px; height: 280px; margin: 30px auto 10px; }
+        .wheel { width: 100%; height: 100%; border-radius: 50%; border: 12px solid white; background: conic-gradient(#FFD217 0% 20%, #0056BF 20% 40%, #B2002D 40% 60%, #F9E4B7 60% 80%, #8EBAFF 80% 100%); transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1); box-shadow: 0 12px 35px rgba(0,0,0,0.1); }
+        .pointer { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 34px; height: 44px; background: var(--red); clip-path: polygon(0 0, 100% 0, 50% 100%); z-index: 20; }
+        .main-spin-btn { background-color: var(--olive); color: white; padding: 18px 60px; border-radius: 100px; box-shadow: 0 8px 0 #3d3600; transition: all 0.2s; border: none; outline: none; margin: 20px auto 40px; display: block; }
+        .main-spin-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 #3d3600; }
+
+        /* パーツ */
+        .chip-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding: 5px 0; scrollbar-width: none; }
+        .chip { background: var(--cream); border-radius: 25px; padding: 10px 18px; font-weight: 900; font-size: 13px; transition: 0.3s; border: 2px solid transparent; white-space: nowrap; }
+        .chip.active { background: var(--primary); border-color: white; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .vibe-card { opacity: 0.4; transition: 0.3s; text-align: center; min-width: 65px; }
+        .vibe-card.active { opacity: 1; transform: translateY(-4px); }
+        .vibe-icon { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
+        
+        #sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: white; z-index: 2001; transition: 0.4s; box-shadow: 10px 0 30px rgba(0,0,0,0.1); border-top-right-radius: 40px; border-bottom-right-radius: 40px; display: flex; flex-direction: column; padding: 40px 24px; }
+        #sidebar.active { left: 0; }
+        .side-close-btn { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #999; cursor: pointer; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3001; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 35px; padding: 30px; color: black; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="transition-all">
+
+    <!-- サイドメニュー -->
+    <div id="side-overlay" class="fixed inset-0 bg-black/50 z-[2000] hidden" onclick="toggleSidebar(false)"></div>
+    <div id="sidebar">
+        <div class="side-close-btn" onclick="toggleSidebar(false)"><i class="fa-solid fa-xmark"></i></div>
+        <div class="side-title text-3xl text-red-700 mb-8 uppercase italic text-center">Menu</div>
+        <div class="flex-1 overflow-y-auto no-scrollbar">
+            <button onclick="openCustomModal()" class="w-full text-left p-4 bg-yellow-50 rounded-2xl flex items-center gap-3 mb-6 active:scale-95 transition">
+                <i class="fa-solid fa-plus-circle text-orange-500"></i>
+                <span class="font-black text-sm text-gray-800 font-sans">カスタムネタを追加</span>
+            </button>
+            <div class="side-title text-[10px] opacity-40 uppercase tracking-widest mb-3">Recommended</div>
+            <div class="p-4 bg-gray-50 rounded-2xl flex items-center gap-3 mb-2 text-gray-800"><i class="fa-solid fa-swords text-red-600"></i><span class="text-sm font-black font-sans">二人対決モード</span></div>
+            <div class="p-4 bg-gray-50 rounded-2xl flex items-center gap-3 mb-2 text-gray-800"><i class="fa-solid fa-ghost text-purple-600"></i><span class="text-sm font-black font-sans">ホラーナイト</span></div>
+        </div>
+        <button onclick="clearHistory()" class="mt-auto w-full p-4 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center gap-3 active:bg-red-100 transition mb-4">
+            <i class="fa-solid fa-trash-can"></i><span class="font-black text-sm font-sans">履歴をすべて削除</span>
+        </button>
+    </div>
+
+    <!-- カスタムモーダル -->
+    <div id="custom-modal" class="modal">
+        <div class="modal-content text-center">
+            <h3 class="side-title text-2xl mb-4 text-orange-600 italic">ADD IDEAS</h3>
+            <textarea id="idea-input" class="w-full p-4 bg-gray-100 rounded-2xl outline-none mb-4 h-24 font-bold" placeholder="ネタを入力..."></textarea>
+            <button onclick="addIdea()" class="w-full bg-orange-500 text-white py-4 rounded-full font-black mb-6">保存する</button>
+            <div id="idea-list" class="max-h-40 overflow-y-auto space-y-2 no-scrollbar text-left text-sm text-black"></div>
+            <button onclick="closeCustomModal()" class="w-full mt-6 text-gray-400 font-bold uppercase text-[10px]">Close</button>
+        </div>
+    </div>
+
+    <!-- 認証画面 -->
+    <div id="auth-screen" class="fixed inset-0 bg-black/95 z-[3000] hidden flex-col items-center justify-center p-10 text-white text-center">
+        <i class="fa-solid fa-skull-crossbones text-purple-600 text-6xl mb-6"></i>
+        <h2 class="brand-title text-3xl mb-2 italic uppercase">Secret Auth</h2>
+        <input type="password" id="auth-input" maxlength="20" class="bg-transparent border-b-2 border-purple-600 text-white text-4xl text-center w-full max-w-[300px] outline-none mb-12 py-2 font-black tracking-widest" placeholder="Key">
+        <button onclick="verifyKey()" class="w-full max-w-[300px] bg-purple-700 text-white py-4 rounded-full side-title text-xl shadow-2xl italic">UNLOCK</button>
+        <button onclick="toggleAuth(false)" class="mt-8 text-gray-500 font-bold text-xs uppercase tracking-widest">Cancel</button>
+    </div>
+
+    <!-- HEADER -->
+    <header class="p-5 flex justify-between items-center">
+        <i class="fa-solid fa-bars text-2xl cursor-pointer" onclick="toggleSidebar(true)"></i>
+        <h1 class="brand-title text-2xl uppercase tracking-tighter text-center flex-1">Kinetic Roulette</h1>
+        <i class="fa-solid fa-gear text-2xl cursor-pointer" onclick="gearTap()"></i>
+    </header>
+
+    <div class="app-view no-scrollbar">
+        <!-- 1. PLAY PAGE -->
+        <main id="page-play" class="page active">
+            <!-- ターゲット選択：シークレット時は非表示 -->
+            <div class="mb-10 normal-only text-gray-500">
+                <div class="flex justify-between items-center mb-3 text-xs">
+                    <h3 class="font-black uppercase tracking-widest">対象を選択</h3>
+                    <span class="bg-blue-400 text-white px-3 py-1 rounded-full font-black uppercase">Required</span>
+                </div>
+                <div class="chip-scroll">
+                    <button class="chip active" onclick="sel(this, 't')">小学生</button>
+                    <button class="chip" onclick="sel(this, 't')">中学生</button>
+                    <button class="chip" onclick="sel(this, 't')">高校生</button>
+                    <button class="chip" onclick="sel(this, 't')">大人</button>
+                </div>
+            </div>
+
+            <!-- ルーレット本体 -->
+            <div class="wheel-box">
+                <div class="pointer"></div>
+                <div id="wheel" class="wheel"></div>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div class="w-10 h-10 bg-white rounded-full border-4 border-[var(--olive)]"></div>
+                </div>
+            </div>
+
+            <button onclick="spin()" class="main-spin-btn"><span class="spin-btn-text text-2xl uppercase italic">Spin!</span></button>
+
+            <!-- ジャンル選択：シークレット時は非表示 -->
+            <div class="mt-8 normal-only text-center">
+                <h3 class="text-[10px] font-black opacity-40 uppercase tracking-[0.4em] mb-8">ジャンルを選択</h3>
+                <div class="chip-scroll pb-4 px-2">
+                    <div class="vibe-card active" onclick="sel(this, 'v')" data-vibe="party"><div class="vibe-icon bg-pink-200 text-pink-600 shadow-sm"><i class="fa-solid fa-gift"></i></div><span class="text-[10px] font-black uppercase">Party</span></div>
+                    <div class="vibe-card" onclick="sel(this, 'v')" data-vibe="romance"><div class="vibe-icon bg-red-100 text-red-700 shadow-sm"><i class="fa-solid fa-heart"></i></div><span class="text-[10px] font-black uppercase">Love</span></div>
+                    <div class="vibe-card" onclick="sel(this, 'v')" data-vibe="friends"><div class="vibe-icon bg-blue-400 text-white shadow-sm"><i class="fa-solid fa-users"></i></div><span class="text-[10px] font-black uppercase">Friend</span></div>
+                    <div class="vibe-card" onclick="sel(this, 'v')" data-vibe="family"><div class="vibe-icon bg-yellow-100 text-yellow-800 shadow-sm"><i class="fa-solid fa-sitemap"></i></div><span class="text-[10px] font-black uppercase">Family</span></div>
+                    <div class="vibe-card" onclick="sel(this, 'v')" data-vibe="company"><div class="vibe-icon bg-gray-200 text-gray-800 shadow-sm"><i class="fa-solid fa-building"></i></div><span class="text-[10px] font-black uppercase">Work</span></div>
+                    <div class="vibe-card hidden" id="vibe-custom" onclick="sel(this, 'v')" data-vibe="custom"><div class="vibe-icon bg-orange-400 text-white shadow-sm"><i class="fa-solid fa-pencil"></i></div><span class="text-[10px] font-black uppercase">Custom</span></div>
+                </div>
+            </div>
+
+            <!-- シークレット中専用メッセージ -->
+            <div id="secret-msg" class="hidden text-center mt-20">
+                <h3 class="brand-title text-purple-600 text-3xl italic animate-pulse">CHAOS MODE</h3>
+                <p class="text-[10px] opacity-40 mt-3 font-bold uppercase tracking-[0.5em]">Secret List Loaded</p>
+            </div>
+        </main>
+
+        <!-- 2. RESULT PAGE -->
+        <main id="page-result" class="page text-center">
+            <div class="flex flex-col items-center pt-10">
+                <div id="res-badge" class="bg-red-700 text-white text-[11px] px-8 py-2 rounded-full font-black italic mb-8 shadow-lg uppercase tracking-wider"><i class="fa-solid fa-bolt"></i> <span id="res-level-tag">LEVEL: NORMAL</span></div>
+                <div id="res-card" class="bg-white rounded-[45px] p-8 shadow-2xl w-full max-w-sm border-b-8 border-gray-100 relative overflow-hidden text-center">
+                    <div id="res-star" class="absolute top-5 right-5 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl shadow-md"><i class="fa-solid fa-star"></i></div>
+                    <div id="res-img-box" class="w-full h-48 bg-gradient-to-tr from-yellow-400 to-red-500 rounded-3xl mb-8 flex items-center justify-center text-white/50 text-7xl"><i class="fa-solid fa-explosion"></i></div>
+                    
+                    <!-- シークレット時は白文字になるFate subtext -->
+                    <p id="res-subtext" class="text-[10px] font-black opacity-30 uppercase mb-3 italic">Fate is sealed</p>
+                    
+                    <h3 id="res-text" class="text-3xl font-black text-black leading-tight mb-8">内容...</h3>
+                </div>
+                <div class="w-full max-w-sm mt-12 mb-10"><button onclick="nav('page-play')" class="w-full bg-red-700 text-white py-6 rounded-full shadow-lg font-black active:scale-95 transition"><span class="spin-btn-text text-2xl uppercase italic">Spin Again</span></button></div>
+            </div>
+        </main>
+
+        <!-- 3. GAMES PAGE -->
+        <main id="page-games" class="page text-black">
+            <h2 class="brand-title text-4xl mb-2 uppercase italic text-center text-red-700">Recorded Chaos</h2>
+            <div id="hist-list" class="space-y-6"></div>
+        </main>
+    </div>
+
+    <div class="nav-container">
+        <nav>
+            <button onclick="nav('page-play')" class="nav-item active" id="n-play"><i class="fa-solid fa-play"></i><span class="nav-text uppercase">Play</span></button>
+            <button onclick="toggleSecret()" class="nav-item" id="n-secret"><i class="fa-solid fa-skull"></i><span class="nav-text uppercase">Secret</span></button>
+            <button onclick="nav('page-games')" class="nav-item" id="n-games"><i class="fa-solid fa-dice-five"></i><span class="nav-text uppercase">Games</span></button>
+        </nav>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'kh_full_v21';
+        const normalDB = {
+            party: ["全力コマネチ！", "30秒コサックダンス", "語尾に『だピョン』"],
+            romance: ["好きな人の名前叫ぶ", "30秒見つめ合う", "投げキッス"],
+            friends: ["即興ラップ30秒", "恥ずかしい話告白", "赤ちゃん言葉"],
+            family: ["全員の肩たたき", "赤ちゃん返り1分", "親への感謝"],
+            company: ["上司への不満(フリ)", "完璧な土下座", "プレゼン30秒"]
+        };
+        let secretDB = ["耳元で愛を囁く", "スマホ履歴公開"];
+        let masterPassword = "Key";
+
+        async function loadData() {
+            try {
+                const s = await fetch('secret.txt'); if(s.ok) secretDB = (await s.text()).split(/\r?\n/).filter(l => l.trim() !== "");
+                const p = await fetch('password.txt'); if(p.ok) masterPassword = (await p.text()).trim();
+            } catch(e) {}
+        }
+        loadData();
+
+        let current = { text: "", level: "普通", type: "NORMAL" };
+        let gtaps = 0, tapTimeout = null;
+
+        function toggleSidebar(show) { document.getElementById('sidebar').style.left = show ? '0' : '-280px'; document.getElementById('side-overlay').classList.toggle('hidden', !show); }
+        
+        function nav(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if(id === 'page-play' && !document.body.classList.contains('secret-active')) document.getElementById('n-play').classList.add('active');
+            if(id === 'page-games') { document.getElementById('n-games').classList.add('active'); renderHist(); }
+            if(document.body.classList.contains('secret-active') && id === 'page-play') document.getElementById('n-secret').classList.add('active');
+            toggleSidebar(false);
+            document.querySelector('.app-view').scrollTop = 0;
+        }
+
+        function spin() {
+            document.querySelector('.app-view').scrollTo({ top: 0, behavior: 'smooth' });
+            const w = document.getElementById('wheel'); const d = 2000 + Math.random() * 2000;
+            const isSecret = document.body.classList.contains('secret-active');
+            w.style.transform = `rotate(${d}deg)`;
+            setTimeout(() => {
+                const card = document.getElementById('res-card'), title = document.getElementById('res-text'), badge = document.getElementById('res-badge'), img = document.getElementById('res-img-box'), star = document.getElementById('res-star'), sub = document.getElementById('res-subtext');
+                if(isSecret) {
+                    current.text = secretDB[Math.floor(Math.random() * secretDB.length)]; current.type = "SECRET"; 
+                    card.style.backgroundColor = "#1A0028"; card.style.borderColor = "#7000FF"; title.style.color = "#FF004C";
+                    sub.style.color = "white"; // シークレット時はFate is sealedを白に
+                    badge.className = "bg-purple-800 text-white text-[11px] px-8 py-2 rounded-full font-black italic shadow-xl";
+                    img.className = "w-full h-48 bg-gradient-to-tr from-purple-900 to-black rounded-3xl mb-8 flex items-center justify-center text-white/50 text-7xl";
+                    star.className = "absolute top-5 right-5 w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white text-xl shadow-md";
+                } else {
+                    const v = document.querySelector('.vibe-card.active').dataset.vibe;
+                    current.text = (v === 'custom') ? JSON.parse(localStorage.getItem('kh_custom_ideas') || '[]')[0] : normalDB[v][Math.floor(Math.random() * normalDB[v].length)];
+                    current.type = "NORMAL"; card.style.backgroundColor = "white"; card.style.borderColor = "#f3f4f6"; title.style.color = "#111827";
+                    sub.style.color = "rgba(0,0,0,0.3)";
+                    badge.className = "bg-red-700 text-white text-[11px] px-8 py-2 rounded-full font-black italic shadow-xl";
+                    img.className = "w-full h-48 bg-gradient-to-tr from-yellow-400 to-red-500 rounded-3xl mb-8 flex items-center justify-center text-white/50 text-7xl";
+                }
+                title.innerText = current.text; saveToStorage(); nav('page-result');
+                w.style.transition = 'none'; w.style.transform = `rotate(${d % 360}deg)`;
+                setTimeout(() => w.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)', 50);
+            }, 4100);
+        }
+
+        function clearHistory() { if (confirm("履歴をすべて削除しますか？")) { localStorage.removeItem(STORAGE_KEY); renderHist(); toggleSidebar(false); } }
+        function saveToStorage() { const h = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; h.unshift({ ...current, d: new Date().toLocaleDateString('ja-JP',{month:'short',day:'2-digit'}), t: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) }); localStorage.setItem(STORAGE_KEY, JSON.stringify(h)); }
+        function renderHist() { const h = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; document.getElementById('hist-list').innerHTML = h.map(i => `<div class="${i.type==='SECRET' ? 'bg-[#150025] border-purple-900' : 'bg-[var(--cream)] border-orange-100'} p-6 rounded-[35px] relative border shadow-sm transition"><div class="absolute top-5 right-5 ${i.type==='SECRET' ? 'bg-purple-700' : 'bg-[var(--primary)]'} text-[10px] px-3 py-1 rounded-full font-black text-white italic uppercase">${i.type}</div><p class="text-[10px] font-black opacity-30 mb-1 text-gray-500">${i.d} • ${i.t}</p><h4 class="${i.type==='SECRET' ? 'text-purple-300' : 'text-gray-900'} text-xl font-black font-sans">${i.text}</h4></div>`).join(''); }
+        function sel(el, type) { el.parentElement.querySelectorAll(type==='t'?'.chip':'.vibe-card').forEach(x => x.classList.remove('active')); el.classList.add('active'); }
+        function toggleSecret() { document.body.classList.toggle('secret-active'); document.getElementById('secret-msg').classList.toggle('hidden'); document.getElementById('n-secret').classList.toggle('active'); nav('page-play'); }
+        function openCustomModal() { document.getElementById('custom-modal').style.display = 'flex'; toggleSidebar(false); renderIdeaList(); }
+        function closeCustomModal() { document.getElementById('custom-modal').style.display = 'none'; }
+        function addIdea() { const input = document.getElementById('idea-input'); if(!input.value.trim()) return; const ideas = JSON.parse(localStorage.getItem('kh_custom_ideas')) || []; ideas.push(input.value.trim()); localStorage.setItem('kh_custom_ideas', JSON.stringify(ideas)); input.value = ""; renderIdeaList(); checkCustomVibe(); }
+        function renderIdeaList() { const ideas = JSON.parse(localStorage.getItem('kh_custom_ideas')) || []; document.getElementById('idea-list').innerHTML = ideas.map((text, i) => `<div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl mb-2 text-black"><span class="text-xs font-bold truncate pr-4 font-sans">${text}</span><i class="fa-solid fa-trash text-red-300" onclick="deleteIdea(${i})"></i></div>`).join(''); }
+        function deleteIdea(index) { const ideas = JSON.parse(localStorage.getItem('kh_custom_ideas')) || []; ideas.splice(index, 1); localStorage.setItem('kh_custom_ideas', JSON.stringify(ideas)); renderIdeaList(); checkCustomVibe(); }
+        function checkCustomVibe() { const ideas = JSON.parse(localStorage.getItem('kh_custom_ideas')) || []; document.getElementById('vibe-custom').classList.toggle('hidden', ideas.length === 0); }
+        function gearTap() { if(gtaps === 0) tapTimeout = setTimeout(() => gtaps = 0, 3000); gtaps++; if(gtaps >= 7) { clearTimeout(tapTimeout); toggleAuth(true); gtaps = 0; } }
+        function toggleAuth(s) { document.getElementById('auth-screen').style.display = s ? 'flex' : 'none'; }
+        function verifyKey() { if(document.getElementById('auth-input').value === masterPassword) { document.getElementById('n-secret').style.display = 'flex'; toggleSecret(); toggleAuth(false); document.getElementById('auth-input').value = ""; } else { alert("Failed"); } }
+        checkCustomVibe(); renderHist();
+    </script>
+</body>
+</html>
